@@ -3,31 +3,32 @@ name: Build Linux ARM64
 on:
   workflow_dispatch:
 
+env:
+  HAXE_VERSION: 4.3.6
+
 jobs:
   build:
     runs-on: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@main
+
+      - name: Setup Haxe
+        uses: krdlab/setup-haxe@master
+        with:
+          haxe-version: ${{ env.HAXE_VERSION }}
 
       - name: Instalar dependencias del sistema
         run: |
           sudo apt-get update
-          sudo apt-get install -y haxe neko g++ make pkg-config \
+          sudo apt-get install -y g++ make pkg-config \
+            libvlc-dev libvlccore-dev \
             libgl1-mesa-dev libglu1-mesa-dev libasound2-dev \
             libpulse-dev libx11-dev libxext-dev libxi-dev libxrandr-dev \
-            libopenal-dev libsdl2-dev libvorbis-dev libogg-dev \
-            libpng-dev libjpeg-dev zlib1g-dev libcurl4-openssl-dev
-
-      - name: Configurar haxelib
-        run: |
-          mkdir -p ~/haxelib
-          haxelib setup ~/haxelib
-          haxelib --global install hmm
-          haxelib --global run hmm setup
+            libopenal-dev libsdl2-dev
 
       - name: Instalar librerias del proyecto
-        run: |
-          haxelib run hmm install || haxelib run hmm install --quiet
+        run: sh ./setup/unix.sh
 
       - name: Desactivar videos y Lua (version ligera)
         run: |
@@ -35,11 +36,11 @@ jobs:
           sed -i '/LUA_ALLOWED/d' Project.xml || true
 
       - name: Compilar
-        run: |
-          haxelib run lime build linux -release -arm64 -Dlinux
+        run: haxelib run lime build linux -arm64 -D HXCPP_ARM64
 
       - name: Subir resultado
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@main
         with:
           name: psych-linux-arm64
-          path: export/release/linux/bin
+          path: export/release/linux/bin/*
+          if-no-files-found: error
